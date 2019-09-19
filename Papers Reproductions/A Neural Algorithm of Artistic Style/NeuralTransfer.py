@@ -246,3 +246,4 @@ plt.title("Output Image")
 plt.savefig("dancing.jpg", bbox_inch="tight")
 plt.show()
 
+
