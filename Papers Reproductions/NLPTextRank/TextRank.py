@@ -1,5 +1,4 @@
-""
-Keywords extraction based on TextRank algorithm
+# Keywords extraction based on TextRank algorithm
 
 # note the default filter part of speech
   jieba.analyse.textrank(sentence, topK=20, withWeight=False, allowPOS=('ns', 'n', 'vn', 'v'))
