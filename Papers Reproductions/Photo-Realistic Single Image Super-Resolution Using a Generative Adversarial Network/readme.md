@@ -14,6 +14,7 @@ tl.layers.Conv2d() parameters:
         name (None or str) -- A unique layer name.
         
 SubpixelConv2d() parameters:
+
         scale (int) -- The up-scaling ratio, a wrong setting will lead to dimension size error.
         n_out_channel (int or None) -- The number of output channels. 
             - If None, automatically set n_out_channel == the number of input channels / (scale x scale). 
