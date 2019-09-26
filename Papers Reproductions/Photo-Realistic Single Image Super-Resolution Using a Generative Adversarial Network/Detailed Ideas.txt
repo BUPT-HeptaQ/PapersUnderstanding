@@ -1,0 +1,163 @@
+The principle of image super-resolution reconstruction, input a picture with less pixels, lower pixels, output more images with more pixels and higher pixels
+
+In the author's article, the author uses downsample_up, using imresize(img, []) to reduce the pixels of the image from (384,384) to (96, 96), thus constructing high-level images and low-level images.
+
+The author uses three parts to form a network.
+
+       The first part is the generation network, which is used to generate the picture. It uses a 16-layer residual network. The final output is tf.nn.tanh(), which is (-1, 1), because the image is (-1,1) Preprocess
+
+       The second part is the discriminator network, which is used to perform the discriminating operation of the picture. For the discriminating network, it is desirable to discriminate the generated picture as false and discriminate the true picture as true.
+
+       The third part is using VGG_19 to extract the output result of the conv5 layer convolution layer of the generated picture and the real picture, used to generate the loss value of the local part mse
+
+
+
+Loss value description:
+
+       D_loss:
+
+                discriminator_loss_1: tl.cost.sigmoid_cross_entropy(logits_real, tf.ones_like(logits_real)) # The loss value of the discrimination result of the real image
+
+                discriminator_loss_2: tl.cost.sigmoid_cross_entrpopy(logits_fake, tf.zeros_like(logits_real)) # Generate the loss value of the discriminator result of the image
+
+      G_loss:
+
+               generator_gan_loss: 1e-3 * tl.cost.sigmoid_cross_entropy(logits_fake, tf.ones_like(logits_real)) # The loss value is expressed as -log(D(g(lr))), the generated image is judged as the true loss value
+
+               Mse_loss: tl.cost.mean_squared_error(net_g.outputs, t_target_image) # Calculate the pixel difference between the real value and the generated value
+
+               Vgg_loss: tl.cost.mean_squared_error(vgg_predict_emb.outputs, vgg_target_emb.outputs) # is used to calculate the difference between the feature maps after the vgg19 convolution layer is generated for the generated image and the real image.
+
+ 
+
+Training instructions:
+
+      First 100 iterations to optimize the build network, using tf.train.AdamOptimer(lr_v, beta1=beta).minimize(mse_loss, var_list=g_var)
+
+       After the generation network is iterated, the iterative generation network and the discriminant network are started, and the loss value of VGG19 is reduced.
+       
+
+Generator network: 16 residual modules are used, and a residual is directly connected between the input of the residual module and the output of the next layer.
+
+Discriminator network: using the feature_map incremental convolution layer to construct the discriminant network
+
+Code description:
+
+ Step 1: Import parameters from config to main part
+
+ Step 2: Use tl.file.exists_or_mkdir() to construct a folder for storing images and define a checkpoint folder.
+
+ Step 3: Use sorted(tl.files.load_file_list) to generate a list of images, and use tl.vis.read_images() to read the images.
+ 
+ Step 4 : build the model of the model
+
+               Step 1: Define the input parameters t_image = tf.placeholder('float32', [batch_size, 96, 96, 3]), t_target_image = tf.placeholder('float32', [batch_size, 384, 384, 3])
+
+               Step 2: Use SGRAN_generator to generate the final build network, net_g, with input parameters train_image, is_training, reuse
+
+               Step 3: Use SGRAN_discriminator to generate the discriminator network. The output is net_discriminator network architecture, logits_real, input parameters are t_target_image, is_training, reuse, and the same input t_image, get logits_fake
+
+               Step 4: Print each layer using net_generator.print_params(False) and net_g.print_layers() without printing parameters
+
+               Step 5: Enter the result of net_generator.outputs and the result of t_target_image, that is, the result of the target image, into Vgg_19_simple_api, and obtain the output result of vgg_net and conv fifth layer.
+
+                              The first step: tf.image.resize_images() performs the dimensional transformation of the image, so that it can be input into VGG_19.
+
+                              The second step: Enter t_target_image with the changed dimension into Vgg_19_simple_api, and get the output result of net_vgg, and vgg_target_emb, which is the fifth layer convolution.
+
+                              The third step: input the net_g.outputs of the changed dimension to Vgg_19_simple_api, and get the output result of vgg_pred_emb, the fifth layer convolution.
+
+              Step 6: Construct net_g_test = SGRAN_generator(t_image, False, True) for the test picture in training
+ 
+ Step 5: Construct the model loss, and the trian_ops operation
+
+                 The first step: the construction of loss, the construction of discriminator_loss and generator_loss
+
+                               Step 1: The construction of discriminator_loss, discriminator_loss_1 + discriminator_loss_2
+
+                                              The first step: discriminator_loss_1: Construct the discriminant loss value of the real picture, ie tl.cost.softmax_cross_entropy(logits_real, tf.ones_like(logits_real))
+
+                                              The Second step: didcriminator_loss_2: Construct the discriminant loss value of the generated image, ie tl.cost.softmax_cross_entropy(logits_fake, tf.ones_like(logits_fake))
+
+                               Step 2: Construction of generator_loss, generator_gan_loss, mse_loss, vgg_loss
+
+                                               Step 1: generator_gan_loss, generate the probability that the network is discriminated against the network, using tl.cost.softmax_cross_entropy(logits_fake, tf.ones_like(logits_fake))
+
+                                               Step 2: mse_loss generates the pixel difference between the image and the target image, using tl.cost.mean_squared_error(t_target_image, net_g.outputs)
+
+                                               Step 3: vgg_loss Get vgg_target_emb.outputs and vgg_pred_emb.outputs to get the mse_loss of the fifth layer of convolutional output
+                    
+                 
+                The second step: Construct train_op, including generator_optimize_init with pre-training, construct generator_optimize, discriminator_optim
+
+                              Step 1: generator_var = tl.layers.get_variables_with_name(‘SGRAN_generator') Generate parameters for the network
+
+                              Step 2: discriminator_var = tl.layers.get_variable_with_name('SGRAN_discriminator') Identify the parameters of the network
+
+                              Step 3: Use with tf.variable_scope('learning_rate'): Use lr_v = tf.Variable(lr_init)
+
+                              Step 4: Define train_op, generator_optimize_init, g_optimize, d_optim
+
+                                            Step 1: Construct generator_optimize_init using tf.train.Adamoptimer(lr_v, beta1=beta).minimize(mse_loss, var_list=generator_var)
+
+                                            Step 2: Construct generator_optimize using tf.train.Adamoptimer(lr_v, beta1=beta).minimize(generator_loss, var_list=generator_var)
+
+                                            Step 3: Construct discriminator_optimize using tf.train.Adamoptimer(lr_v, beta1=beta).minimize(discriminator_loss, var_list=discriminator_var)
+
+ Step 6: Load the trained session parameters using tl.files.load_and_assign_npz()
+
+              Step 1: Use tf.Session(config=tf.ConfigProto(allow_soft_placement=True, log_device_placement=False))
+
+              Step 2: tl.layers.initialize_global_variables(sess)
+
+              Step 3: use tf.file.load_and_assign_npz to download the g_net parameters, otherwise download the g_{}_init parameter download
+
+              Step 4: Use df.file.load_and_assign_npz to download d_net parameters
+
+ Step 7: Download the VGG network and apply it to net_vgg
+
+              Step 1: Use np.load(path, encoding='latin1').item() to download the parameters.
+
+              Step 2: Loop sorted(npz.items()) to loop through the parameters and add them to params
+
+              Step 3: Apply parameters to net_vgg using tl.files.assign_params(session, params, net_vgg)
+              
+ Step 8: Perform parameter training operations
+
+              Step 1: popping out a batch_size data from the picture to form a test set
+
+                        Step 1: Use tl.prepro.threading_data fn = crop_sub_imgs_fn, use crop for cropping
+
+                           Step 2: Use tl.prepro.threading_data fn = downsample to use iremsize for dimensional compression of images
+
+              Step 2: Perform a pre-training operation
+
+                           Step 1: loop iteration, get a batch of data, use crop_sub_imgs_fn and downsample to construct low level data and high level data
+
+                           Step 2: Pre-train the image using sess.run, generator_optimize_init
+
+              Step 3: training operation
+
+                           Step 1: loop iteration, get a batch of data, use crop_sub_imgs_fn and downsample to construct low level data and high level data
+
+                           Step 2: Use session.run, generator_optimize and discriminator_optimize for image training
+ 
+ Step 9: the test phase of the evaluation image
+
+               Step 1: Construct the image display folder, using tf.files.exits_files_mkdir
+
+               Step 2: Read in the image using tl.files.load_file_list and tl.vis.read_images
+
+              Step 3: Select an image based on the index, /127.5 - 1 for normalization
+
+              Step 4: Construct the input train_image using tf.placeholder('float32', [1, None, None, 3])
+
+               Step 5: Construct net_generator with SGRAN_generator(train_image, False, False)
+
+               Step 6: Construct sess using tf.Session(), download trained sess using tl.files.load_and_assign_npz, network=net_generator
+
+               Step 7: Get images using session.run([net_generator.outputs], feed_dict={t_image:[valid_lr_img]})
+
+               Step 8: Save the image using tl.vis.save_images(outputs[0])
+
+               Step 9: Use scipy.misc.imresize() to expand the low-pixel image to four times the original, compared to the reconstructed image.
