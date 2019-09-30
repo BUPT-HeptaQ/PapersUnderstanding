@@ -1,0 +1,22 @@
+Parameter description:
+
+1. sift = cv2.xfeatures2d.SIFT_create()	# instantiation
+Parameter description: sift is an instantiated sift function
+
+2. kp = sift.detect(gray, None)	# Find the key points in the image
+Parameter description: kp represents the generated key point, and gray represents the grayscale image of the input.
+
+3. ret = cv2.drawKeypoints(gray, kp, img) 	# Draw key points in the diagram
+Parameter description: gray indicates the input picture, kp indicates the key point, and img indicates the output picture.
+
+4.kp, dst = sift.compute(kp) 	# Calculate the sift feature vector corresponding to the key point
+Parameter description: kp represents the key point of the input, dst represents the sift feature vector of the output, 
+usually is 128-dimensional
+
+Code description: 
+Step 1: load in the picture
+Step 2: Perform grayscale
+Step 3: Instantiate the sift function using cv2.xfeatures2d.SIFT_create()
+Step 4: Generate key points using sift.detect(gray, None)
+Step 5: Use cv2.drawKeypoints for drawing operations
+Step 6: Use sift.compute(kp) to find the 128 eigenvectors corresponding to the key points
