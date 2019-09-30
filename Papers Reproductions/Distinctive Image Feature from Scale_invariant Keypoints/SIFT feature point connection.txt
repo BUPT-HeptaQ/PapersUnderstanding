@@ -1,0 +1,11 @@
+
+cv2.drawMatches(imageA, kpsA, imageB, kpsB, matches[:10], None, flags=2) 	# connect the key points of two image
+
+Parameter description: imageA and imageB represent pictures, kpsA and kpsB represent key points, 
+matches indicate matching index values obtained by cv2.BFMatcher, and distances, flags indicate SIFT feature points with several images.
+
+code description:
+Step 1: Use sift.detectAndComputer to find key points and sift feature vectors
+Step 2: build BFMatcher () brute force matcher, bf.match matches sift feature vector, using Euclidean distance
+Step 3: Sort the matches by distance according to the matching result matches.distance
+Step 4: Perform drawing operations and use cv2.drawMatches for drawing operations
