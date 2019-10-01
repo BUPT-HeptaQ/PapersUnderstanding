@@ -1,0 +1,54 @@
+parameters description:
+
+1. sift.detectAndComputer(gray, None)     # Calculate the key points of the image and the SIFT feature vector
+Parameter description: gray indicates the input image
+
+2.cv2.findHomography(kpA, kpB, cv2.RANSAC, reproThresh)     # Calculate the homography matrix
+Parameter description: kpA indicates the coordinates of the key point of image A, kpB is the coordinates of the key point of image B, 
+iterate using random sampling consistency algorithm, and reproThresh indicates the number of samples taken each time.
+
+3.cv2.warpPespective(imageA, H, (imageA.shape[1] + imageB.shape[1], imageA.shape[0])) 
+# Get the changed image according to the homography matrix
+Parameter description: image represents the input image, H represents the homography matrix, 
+(imageA.shape[1] + imageB.shape[1], imageA.shape[0]) represents the dimension after the matrix changed
+
+4. cv2.line(imageA, kpsA, imageB, kpsB, (0,0,255), 2)     # to draw a straight line
+Parameter description: imageA and imageB represent the input picture, kpsA and kpsB represent the coordinates of the key point (x, y), 
+(0, 0, 255) represents the color, and 2 represents the width of the line.
+
+RANSAC algorithm (random sampling consistency algorithm), using the least squares method to satisfy as many points as possible 
+can be distributed around the fitted curve, reducing the rooting error, so the fitted curve is prone to deviation to some extent, 
+But RANSAC will not happen this
+
+RANSAC principle, because only two points are needed to fit a straight line, so each time two points are randomly selected, 
+a straight line is made, a distance is determined, and the number of points falling within the distance range of the straight line is judged, 
+and continue to iterate until it is found The fitted straight line, so that the point falls on the most fitting curve above
+
+The key to image splicing is to change the image. The closer the changed point is to the SIFT point in the picture to be spliced, 
+the closer the Euclidean distance is. The process of splicing the image requires at least 4 pairs of feature points. get changed matrix Hi
+
+Use RANSAC to continuously take 4 pairs of SITF feature points randomly from two images, calculate H, define the loss value, 
+ie x', the distance from x, that is, the sum of the distances between y' and y is the minimum value. 
+Constant iteration to find the best H
+
+The above is the calculation of the H value, which is the changed matrix.
+
+Code idea:
+
+Step 1: grayscale the image, use sift.detectAndCompute(image, None) for key points ksp, dpSIFT feature vector, 
+kps vectorization operation, ie kps.pt
+
+Step 2: construct a BMFmatch matcher to obtain the matching value that matches the condition. 
+The match obtains the matching value index of th ekey point ksp, and uses the index to obtain the qualified kspA and kspB.
+
+Step 3: Use cv2.findHomography(kpA, kpB, cv2.RANSAC, reproThresh) to randomly extract 4 points to find the most suitable H change matrix.
+
+Step 4: Use the obtained changed matrix H, cv.warpPerspective to find the changed image for imageA
+
+Step 5: Add imageB to the changed image to get the final image
+
+Step 6: If need to display, construct a new image, the size is 
+imageA.shape[0], imageB.shape[1] +imageA.shape[1], 
+using the index of matches, using cv2.line will meet the condition points to connect
+
+Step 7: Return to the final result and draw a picture
