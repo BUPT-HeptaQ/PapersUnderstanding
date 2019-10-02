@@ -8,7 +8,7 @@ Step 3: Using cv2.canny to detect edges
 
 Step 4: Select the image area
 
-Step 5: Use Hoffman to detect lines 
+Step 5: Use Hough to detect lines 
 
 Step 6: Draw a deleted line
 
